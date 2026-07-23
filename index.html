@@ -1773,53 +1773,135 @@ src="https://www.facebook.com/tr?id=1378486190820877&ev=PageView&noscript=1"/></
     return s;
   }
 
-  function submitForm(){
-    const data = {
-      name:form.name.value.trim(),email:form.email.value.trim(),phone:form.phone.value.trim(),
-      city:form.city.value.trim(),stage:form.stage.value,intent:form.intent.value,
-      skill:form.skill.value,budget:form.budget.value,why:form.why.value.trim(),
-      source:modalSource,referrer:document.referrer,landing_url:window.location.href,
-      ts:new Date().toISOString()
-    };
-    data.lead_score = score(data);
-    data.quality = data.lead_score>=70 ? 'HOT' : data.lead_score>=50 ? 'WARM' : 'COLD';
+async function submitForm() {
 
-    if(typeof fbq==='function'){
-      fbq('track','Lead',{
-        content_name:'Data Engineer Residency Application',
-        content_category:'Residency',value:49999,currency:'INR',
-        lead_score:data.lead_score,quality:data.quality,source:data.source
-      });
-      fbq('track','CompleteRegistration',{
-        content_name:'DE Residency Lead',value:49999,currency:'INR',status:data.quality
-      });
+    const SCRIPT_URL = "https://datadives.marketermonish.workers.dev";
+
+    btnNext.disabled = true;
+    btnNext.innerText = "Submitting...";
+
+    const params = new URLSearchParams(window.location.search);
+
+    let ipData = {};
+
+    try{
+        ipData = await fetch("https://ipapi.co/json/")
+            .then(r=>r.json());
+    }catch(e){}
+
+    const data = {
+        leadId: Date.now().toString(),
+
+        landingPage: document.title,
+        pageUrl: window.location.href,
+        formSource: modalSource,
+
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        city: form.city.value.trim(),
+
+        stage: form.stage.value,
+        intent: form.intent.value,
+        skill: form.skill.value,
+        budget: form.budget.value,
+        why: form.why.value.trim(),
+
+        utm_source: params.get("utm_source") || "",
+        utm_medium: params.get("utm_medium") || "",
+        utm_campaign: params.get("utm_campaign") || "",
+        utm_content: params.get("utm_content") || "",
+        utm_term: params.get("utm_term") || "",
+
+        fbclid: params.get("fbclid") || "",
+        gclid: params.get("gclid") || "",
+
+        referrer: document.referrer,
+
+        ip: ipData.ip || "",
+        country: ipData.country_name || "",
+        region: ipData.region || "",
+        city_ip: ipData.city || "",
+        isp: ipData.org || "",
+
+        browser: navigator.appName,
+        browserVersion: navigator.appVersion,
+        os: navigator.platform,
+        device: /Mobi/i.test(navigator.userAgent) ? "Mobile" : "Desktop",
+
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+
+        screen: screen.width + "x" + screen.height,
+        viewport: window.innerWidth + "x" + window.innerHeight,
+
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+
+        sessionId: sessionStorage.getItem("sessionId") || (function(){
+            const id=Math.random().toString(36).substring(2);
+            sessionStorage.setItem("sessionId",id);
+            return id;
+        })(),
+
+        visitorId: localStorage.getItem("visitorId") || (function(){
+            const id=Math.random().toString(36).substring(2);
+            localStorage.setItem("visitorId",id);
+            return id;
+        })(),
+
+        cookies:navigator.cookieEnabled,
+        dnt:navigator.doNotTrack
+    };
+
+    data.lead_score = computeLeadScore(data);
+    data.quality =
+        data.lead_score>=70 ? "HOT" :
+        data.lead_score>=50 ? "WARM" :
+        "COLD";
+
+    try{
+
+        await fetch(SCRIPT_URL,{
+            method:"POST",
+            body:JSON.stringify(data),
+            headers:{
+                "Content-Type":"application/json"
+            }
+        });
+
+        if(typeof fbq==="function"){
+
+            fbq("track","Lead",{
+
+                content_name:"Data Engineer Residency Application",
+                value:49999,
+                currency:"INR",
+
+                lead_score:data.lead_score,
+                quality:data.quality,
+                source:data.formSource
+
+            });
+
+        }
+
+        currentStep=6;
+        updateStepView();
+
+    }catch(err){
+
+        alert("Something went wrong. Please try again.");
+
+        console.log(err);
+
     }
 
-    // TODO: wire your Zapier/n8n/CRM webhook
-    /*
-    fetch('https://hooks.zapier.com/hooks/catch/XXXXXX/YYYYYY/',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
-    }).catch(()=>{});
-    */
-    fetch("https://script.google.com/macros/s/AKfycbzZnZxXeKM_gQSVtClWCRue_qv9oakOahtEdHUpZDpc0qtSp78RGNxMhKCpEW_zu5SG/exec", {
-  method: "POST",
-  mode: "no-cors",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(data)
-}).catch(err => console.error("Sheet Error:", err));	
+    btnNext.disabled=false;
+    btnNext.innerText="Submit Application →";
 
-    // Store locally as fallback so nothing gets lost during testing
-    try {
-      const store = JSON.parse(localStorage.getItem('dd_leads')||'[]');
-      store.push(data);
-      localStorage.setItem('dd_leads', JSON.stringify(store));
-    } catch(_){}
+}
 
-    currentStep = 6;
-    updateStepView();
-  }
 
   function resetForm(){
     form.reset();
