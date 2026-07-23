@@ -1895,19 +1895,6 @@ async function submitForm() {
     currentStep=1;
   }
 
-  
-    try{
-      const store = JSON.parse(localStorage.getItem('dd_leads')||'[]');
-      store.push(data); localStorage.setItem('dd_leads',JSON.stringify(store));
-    }catch(_){}
-
-    currentStep=6; updateStepView();
-  }
-  function resetForm(){
-    form.reset();
-    document.querySelectorAll('.ropt.selected').forEach(el=>el.classList.remove('selected'));
-    currentStep=1;
-  }
 
   // Section-in-view Pixel
   const sec = [{id:'pricing',name:'Pricing'},{id:'projects',name:'Projects'},{id:'curriculum',name:'Curriculum'}];
