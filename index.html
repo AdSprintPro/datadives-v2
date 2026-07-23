@@ -1772,22 +1772,17 @@ src="https://www.facebook.com/tr?id=1378486190820877&ev=PageView&noscript=1"/></
     if(d.skill==='strong') s+=10; else if(d.skill==='okay') s+=6; else s+=2;
     return s;
   }
-
 async function submitForm() {
 
     const SCRIPT_URL = "https://datadives.marketermonish.workers.dev";
-
-    btnNext.disabled = true;
-    btnNext.innerText = "Submitting...";
 
     const params = new URLSearchParams(window.location.search);
 
     let ipData = {};
 
-    try{
-        ipData = await fetch("https://ipapi.co/json/")
-            .then(r=>r.json());
-    }catch(e){}
+    try {
+        ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
+    } catch (e) {}
 
     const data = {
         leadId: Date.now().toString(),
@@ -1824,7 +1819,7 @@ async function submitForm() {
         city_ip: ipData.city || "",
         isp: ipData.org || "",
 
-        browser: navigator.appName,
+        browser: navigator.userAgent,
         browserVersion: navigator.appVersion,
         os: navigator.platform,
         device: /Mobi/i.test(navigator.userAgent) ? "Mobile" : "Desktop",
@@ -1838,71 +1833,62 @@ async function submitForm() {
         platform: navigator.platform,
         userAgent: navigator.userAgent,
 
-        sessionId: sessionStorage.getItem("sessionId") || (function(){
-            const id=Math.random().toString(36).substring(2);
-            sessionStorage.setItem("sessionId",id);
-            return id;
-        })(),
+        sessionId: sessionStorage.getItem("sessionId") || crypto.randomUUID(),
+        visitorId: localStorage.getItem("visitorId") || crypto.randomUUID(),
 
-        visitorId: localStorage.getItem("visitorId") || (function(){
-            const id=Math.random().toString(36).substring(2);
-            localStorage.setItem("visitorId",id);
-            return id;
-        })(),
-
-        cookies:navigator.cookieEnabled,
-        dnt:navigator.doNotTrack
+        cookies: navigator.cookieEnabled,
+        dnt: navigator.doNotTrack
     };
 
-    data.lead_score = computeLeadScore(data);
-    data.quality =
-        data.lead_score>=70 ? "HOT" :
-        data.lead_score>=50 ? "WARM" :
-        "COLD";
+    sessionStorage.setItem("sessionId", data.sessionId);
+    localStorage.setItem("visitorId", data.visitorId);
 
-    try{
+    data.lead_score = score(data);
+    data.quality = data.lead_score >= 70 ? "HOT" :
+                   data.lead_score >= 50 ? "WARM" : "COLD";
 
-        await fetch(SCRIPT_URL,{
-            method:"POST",
-            body:JSON.stringify(data),
-            headers:{
-                "Content-Type":"application/json"
-            }
+    try {
+
+        await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
         });
 
-        if(typeof fbq==="function"){
+        if (typeof fbq === "function") {
 
-            fbq("track","Lead",{
+            fbq("track", "Lead", {
+                content_name: "Data Engineer Residency Application",
+                content_category: "Residency",
+                value: 49999,
+                currency: "INR",
+                lead_score: data.lead_score,
+                quality: data.quality,
+                source: data.formSource
+            });
 
-                content_name:"Data Engineer Residency Application",
-                value:49999,
-                currency:"INR",
-
-                lead_score:data.lead_score,
-                quality:data.quality,
-                source:data.formSource
-
+            fbq("track", "CompleteRegistration", {
+                content_name: "DE Residency Lead",
+                value: 49999,
+                currency: "INR",
+                status: data.quality
             });
 
         }
 
-        currentStep=6;
+        currentStep = 6;
         updateStepView();
 
-    }catch(err){
+    } catch (err) {
 
-        alert("Something went wrong. Please try again.");
-
-        console.log(err);
+        console.error(err);
+        alert("Submission failed. Please try again.");
 
     }
 
-    btnNext.disabled=false;
-    btnNext.innerText="Submit Application →";
-
 }
-
-
   function resetForm(){
     form.reset();
     document.querySelectorAll('.radio-opt.selected').forEach(el=>el.classList.remove('selected'));
